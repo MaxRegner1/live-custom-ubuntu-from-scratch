@@ -1,4 +1,4 @@
-name: build-bionic
+name: MR OS
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-20.04
+    runs-on: MR-20.04
 
     steps:
       - uses: actions/checkout@v2
