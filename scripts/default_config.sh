@@ -15,13 +15,13 @@ export TARGET_KERNEL_PACKAGE="linux-generic"
 
 # The file (no extension) of the ISO containing the generated disk image,
 # the volume id, and the hostname of the live environment are set from this name.
-export TARGET_NAME="ubuntu-from-scratch"
+export TARGET_NAME="MR OS"
 
 # The text label shown in GRUB for booting into the live environment
-export GRUB_LIVEBOOT_LABEL="Try Ubuntu FS without installing"
+export GRUB_LIVEBOOT_LABEL="Try MR OS without installing"
 
 # The text label shown in GRUB for starting installation
-export GRUB_INSTALL_LABEL="Install Ubuntu FS"
+export GRUB_INSTALL_LABEL="Install MR OS"
 
 # Packages to be removed from the target system after installation completes succesfully
 export TARGET_PACKAGE_REMOVE="
