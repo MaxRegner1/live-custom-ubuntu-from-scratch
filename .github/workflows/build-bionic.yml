@@ -1,4 +1,4 @@
-name: MR OS
+name: CI
 
 on:
   push:
