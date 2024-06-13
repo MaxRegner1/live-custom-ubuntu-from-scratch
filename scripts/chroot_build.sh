@@ -56,14 +56,21 @@ function setup_host() {
     echo "=====> running setup_host ..."
 
    cat <<EOF > /etc/apt/sources.list
-deb http://repo.openeuler.org/openEuler-22.03-LTS/OS/x86_64/ openEuler-22.03-LTS main
+deb http://us.archive.ubuntu.com/ubuntu/ $TARGET_UBUNTU_VERSION main restricted universe multiverse
+deb-src http://us.archive.ubuntu.com/ubuntu/ $TARGET_UBUNTU_VERSION main restricted universe multiverse
+
+deb http://us.archive.ubuntu.com/ubuntu/ $TARGET_UBUNTU_VERSION-security main restricted universe multiverse
+deb-src http://us.archive.ubuntu.com/ubuntu/ $TARGET_UBUNTU_VERSION-security main restricted universe multiverse
+
+deb http://us.archive.ubuntu.com/ubuntu/ $TARGET_UBUNTU_VERSION-updates main restricted universe multiverse
+deb-src http://us.archive.ubuntu.com/ubuntu/ $TARGET_UBUNTU_VERSION-updates main restricted universe multiverse
 EOF
 
     echo "$TARGET_NAME" > /etc/hostname
 
     # we need to install systemd first, to configure machine id
-    dnf update -y
-    dnf install -y systemd-sysv
+    apt-get update
+    apt-get install -y libterm-readline-gnu-perl systemd-sysv
 
     #configure machine id
     dbus-uuidgen > /etc/machine-id
@@ -89,31 +96,34 @@ function load_config() {
 
 function install_pkg() {
     echo "=====> running install_pkg ... will take a long time ..."
-    dnf -y upgrade
+    apt-get -y upgrade
 
     # install live packages
-    dnf install -y \
+    apt-get install -y \
     sudo \
     network-manager \
     net-tools \
     wireless-tools \
-    grub2 \
+    grub-common \
+    grub-gfxpayload-lists \
+    grub-pc \
+    grub-pc-bin \
+    grub2-common \
     locales \
-    pangolin-desktop \
-    euleros-release
+    pangolin-desktop
 
     # install kernel
-    dnf install -y --skip-broken $TARGET_KERNEL_PACKAGE
+    apt-get install -y --no-install-recommends $TARGET_KERNEL_PACKAGE
 
     # Call into config function
     customize_image
 
-    # remove unused and clean up dnf cache
-    dnf autoremove -y
+    # remove unused and clean up apt cache
+    apt-get autoremove -y
 
     # final touch
-    localectl set-locale LANG=en_US.UTF-8
-    localectl set-keymap us
+    dpkg-reconfigure locales
+    dpkg-reconfigure resolvconf
 
     # network manager
     cat <<EOF > /etc/NetworkManager/NetworkManager.conf
@@ -124,9 +134,9 @@ plugins=ifcfg-rh,keyfile
 managed=false
 EOF
 
-    systemctl restart NetworkManager
+    dpkg-reconfigure network-manager
 
-    dnf clean all
+    apt-get clean -y
 }
 
 function finish_up() { 
