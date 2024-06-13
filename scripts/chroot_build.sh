@@ -12,7 +12,7 @@ CMD=(setup_host install_pkg finish_up)
 function help() {
     # if $1 is set, use $1 as headline message in help()
     if [ -z ${1+x} ]; then
-        echo -e "This script builds a system from scratch with Pangolin Desktop and OpenEuler configurations"
+        echo -e "This script builds Ubuntu from scratch with Pangolin Desktop and OpenEuler configurations"
         echo -e
     else
         echo -e $1
@@ -55,28 +55,28 @@ function check_host() {
 function setup_host() {
     echo "=====> running setup_host ..."
 
-   cat <<EOF > /etc/apt/sources.list
-deb http://us.archive.ubuntu.com/ubuntu/ $TARGET_UBUNTU_VERSION main restricted universe multiverse
-deb-src http://us.archive.ubuntu.com/ubuntu/ $TARGET_UBUNTU_VERSION main restricted universe multiverse
+    cat <<EOF > /etc/apt/sources.list
+deb $TARGET_UBUNTU_MIRROR $TARGET_UBUNTU_VERSION main restricted universe multiverse
+deb-src $TARGET_UBUNTU_MIRROR $TARGET_UBUNTU_VERSION main restricted universe multiverse
 
-deb http://us.archive.ubuntu.com/ubuntu/ $TARGET_UBUNTU_VERSION-security main restricted universe multiverse
-deb-src http://us.archive.ubuntu.com/ubuntu/ $TARGET_UBUNTU_VERSION-security main restricted universe multiverse
+deb $TARGET_UBUNTU_MIRROR $TARGET_UBUNTU_VERSION-security main restricted universe multiverse
+deb-src $TARGET_UBUNTU_MIRROR $TARGET_UBUNTU_VERSION-security main restricted universe multiverse
 
-deb http://us.archive.ubuntu.com/ubuntu/ $TARGET_UBUNTU_VERSION-updates main restricted universe multiverse
-deb-src http://us.archive.ubuntu.com/ubuntu/ $TARGET_UBUNTU_VERSION-updates main restricted universe multiverse
+deb $TARGET_UBUNTU_MIRROR $TARGET_UBUNTU_VERSION-updates main restricted universe multiverse
+deb-src $TARGET_UBUNTU_MIRROR $TARGET_UBUNTU_VERSION-updates main restricted universe multiverse
 EOF
 
     echo "$TARGET_NAME" > /etc/hostname
 
-    # we need to install systemd first, to configure machine id
+    # Install necessary packages
     apt-get update
-    apt-get install -y libterm-readline-gnu-perl systemd-sysv
+    apt-get install -y libterm-readline-gnu-perl systemd-sysv dbus
 
-    # configure machine id
+    # Configure machine id
     dbus-uuidgen > /etc/machine-id
     ln -fs /etc/machine-id /var/lib/dbus/machine-id
 
-    # don't understand why, but multiple sources indicate this
+    # Handle initctl diversion
     dpkg-divert --local --rename --add /sbin/initctl
     ln -s /bin/true /sbin/initctl
 }
@@ -97,24 +97,22 @@ function install_pkg() {
     echo "=====> running install_pkg ... will take a long time ..."
     apt-get -y upgrade
 
-    # install live packages
-    apt-get install -y \
-    sudo \
-    network-manager \
-    net-tools \
-    wireless-tools \
-    grub-common \
-    grub-gfxpayload-lists \
-    grub-pc \
-    grub-pc-bin \
-    grub2-common \
-    locales \
-    software-properties-common
+    # Install minimal desktop environment
+    apt-get install -y ubuntu-standard ubuntu-desktop-minimal
 
-    # install kernel
+    # Install network tools
+    apt-get install -y network-manager net-tools wireless-tools
+
+    # Install bootloader
+    apt-get install -y grub-common grub-pc grub2-common
+
+    # Install locales
+    apt-get install -y locales
+
+    # Install kernel package
     apt-get install -y --no-install-recommends $TARGET_KERNEL_PACKAGE
 
-    # install Pangolin desktop
+    # Install Pangolin desktop environment
     add-apt-repository ppa:ubuntubudgie/backports || true  # Ignore errors if repository already added
     apt-get update
     apt-get install -y ubuntu-budgie-desktop
@@ -122,10 +120,10 @@ function install_pkg() {
     # Call into config function
     customize_image
 
-    # remove unused and clean up apt cache
+    # Remove unused and clean up apt cache
     apt-get autoremove -y
 
-    # final touch
+    # Final configuration
     dpkg-reconfigure locales
 
     # Check if resolvconf is installed before reconfiguring
@@ -135,10 +133,12 @@ function install_pkg() {
         echo "resolvconf is not installed"
     fi
 
-    # network manager
+    # Network manager configuration
     cat <<EOF > /etc/NetworkManager/NetworkManager.conf
 [main]
+rc-manager=resolvconf
 plugins=ifupdown,keyfile
+dns=dnsmasq
 
 [ifupdown]
 managed=false
@@ -152,13 +152,14 @@ EOF
 function finish_up() { 
     echo "=====> finish_up"
 
-    # truncate machine id (why??)
+    # Truncate machine id
     truncate -s 0 /etc/machine-id
 
-    # remove diversion (why??)
+    # Remove initctl diversion
     rm /sbin/initctl
     dpkg-divert --rename --remove /sbin/initctl
 
+    # Clean up
     rm -rf /tmp/* ~/.bash_history
 }
 
@@ -167,10 +168,10 @@ function finish_up() {
 load_config
 check_host
 
-# check number of args
+# Check number of arguments
 if [[ $# == 0 || $# > 3 ]]; then help; fi
 
-# loop through args
+# Loop through arguments
 dash_flag=false
 start_index=0
 end_index=${#CMD[*]}
@@ -191,7 +192,7 @@ if [[ $dash_flag == false ]]; then
     end_index=$(($start_index + 1))
 fi
 
-# loop through the commands
+# Execute commands based on specified range
 for ((ii=$start_index; ii<$end_index; ii++)); do
     ${CMD[ii]}
 done
