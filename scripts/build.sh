@@ -3,45 +3,45 @@
 set -e                  # exit on error
 set -o pipefail         # exit on pipeline error
 set -u                  # treat unset variable as error
-#set -x                 # uncomment for debugging
+#set -x
 
-# Initialize script directory
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 
-# Supported commands
 CMD=(setup_host debootstrap run_chroot build_iso)
 
-DATE=$(TZ="UTC" date +"%y%m%d-%H%M%S")
+DATE=`TZ="UTC" date +"%y%m%d-%H%M%S"`
 
 function help() {
+    # if $1 is set, use $1 as headline message in help()
     if [ -z ${1+x} ]; then
-        echo -e "This script builds a bootable Ubuntu ISO image"
-        echo
+        echo -e "This script builds a bootable ubuntu ISO image"
+        echo -e
     else
-        echo -e "$1"
+        echo -e $1
         echo
     fi
-    echo -e "Supported commands: ${CMD[*]}"
-    echo
+    echo -e "Supported commands : ${CMD[*]}"
+    echo -e
     echo -e "Syntax: $0 [start_cmd] [-] [end_cmd]"
-    echo -e "\trun from start_cmd to end_cmd"
-    echo -e "\tif start_cmd is omitted, start from the first command"
-    echo -e "\tif end_cmd is omitted, end with the last command"
-    echo -e "\tenter a single cmd to run that specific command"
-    echo -e "\tenter '-' as the only argument to run all commands"
-    echo
+    echo -e "\trun from start_cmd to end_end"
+    echo -e "\tif start_cmd is omitted, start from first command"
+    echo -e "\tif end_cmd is omitted, end with last command"
+    echo -e "\tenter single cmd to run the specific command"
+    echo -e "\tenter '-' as only argument to run all commands"
+    echo -e
     exit 0
 }
 
 function find_index() {
-    local i
-    for ((i = 0; i < ${#CMD[*]}; i++)); do
+    local ret;
+    local i;
+    for ((i=0; i<${#CMD[*]}; i++)); do
         if [ "${CMD[i]}" == "$1" ]; then
-            index=$i
-            return
+            index=$i;
+            return;
         fi
     done
-    help "Command not found: $1"
+    help "Command not found : $1"
 }
 
 function chroot_enter_setup() {
@@ -62,9 +62,9 @@ function chroot_exit_teardown() {
 
 function check_host() {
     local os_ver
-    os_ver=$(lsb_release -i | grep -E "(Ubuntu|Debian)")
+    os_ver=`lsb_release -i | grep -E "(Ubuntu|Debian)"`
     if [[ -z "$os_ver" ]]; then
-        echo "WARNING: OS is not Debian or Ubuntu and is untested"
+        echo "WARNING : OS is not Debian or Ubuntu and is untested"
     fi
 
     if [ $(id -u) -eq 0 ]; then
@@ -80,7 +80,7 @@ function load_config() {
     elif [[ -f "$SCRIPT_DIR/default_config.sh" ]]; then
         . "$SCRIPT_DIR/default_config.sh"
     else
-        >&2 echo "Unable to find default config file $SCRIPT_DIR/default_config.sh, aborting."
+        >&2 echo "Unable to find default config file  $SCRIPT_DIR/default_config.sh, aborting."
         exit 1
     fi
 }
@@ -105,7 +105,7 @@ function setup_host() {
 
 function debootstrap() {
     echo "=====> running debootstrap ... will take a couple of minutes ..."
-    sudo debootstrap --arch=amd64 --variant=minbase "$TARGET_UBUNTU_VERSION" chroot "$TARGET_UBUNTU_MIRROR"
+    sudo debootstrap  --arch=amd64 --variant=minbase $TARGET_UBUNTU_VERSION chroot $TARGET_UBUNTU_MIRROR
 }
 
 function run_chroot() {
@@ -114,10 +114,10 @@ function run_chroot() {
     chroot_enter_setup
 
     # Setup build scripts in chroot environment
-    sudo ln -f "$SCRIPT_DIR/chroot_build.sh" chroot/root/chroot_build.sh
-    sudo ln -f "$SCRIPT_DIR/default_config.sh" chroot/root/default_config.sh
+    sudo ln -f $SCRIPT_DIR/chroot_build.sh chroot/root/chroot_build.sh
+    sudo ln -f $SCRIPT_DIR/default_config.sh chroot/root/default_config.sh
     if [[ -f "$SCRIPT_DIR/config.sh" ]]; then
-        sudo ln -f "$SCRIPT_DIR/config.sh" chroot/root/config.sh
+        sudo ln -f $SCRIPT_DIR/config.sh chroot/root/config.sh
     fi
 
     # Launch into chroot environment to build install image.
@@ -140,8 +140,8 @@ function build_iso() {
     mkdir -p image/{casper,isolinux,install}
 
     # copy kernel files
-    sudo cp chroot/boot/vmlinuz-*-*-*-*-*-* image/casper/vmlinuz
-    sudo cp chroot/boot/initrd.img-*-*-*-*-*-* image/casper/initrd
+    sudo cp chroot/boot/vmlinuz-**-**-generic image/casper/vmlinuz
+    sudo cp chroot/boot/initrd.img-**-**-generic image/casper/initrd
 
     # memtest86
     sudo cp chroot/boot/memtest86+.bin image/install/memtest86+
@@ -222,7 +222,7 @@ EOF
 EOF
 
     # create iso image
-    pushd "$SCRIPT_DIR/image"
+    pushd $SCRIPT_DIR/image
     grub-mkstandalone \
         --format=x86_64-efi \
         --output=isolinux/bootx64.efi \
@@ -239,7 +239,6 @@ EOF
     )
 
     grub-mkstandalone \
-        --format     grub-mkstandalone \
         --format=i386-pc \
         --output=isolinux/core.img \
         --install-modules="linux16 linux normal iso9660 biosdisk memdisk search tar ls" \
@@ -281,43 +280,40 @@ EOF
 
 # =============   main  ================
 
-# Ensure script runs from its directory
-cd "$SCRIPT_DIR"
+# we always stay in $SCRIPT_DIR
+cd $SCRIPT_DIR
 
-# Load configuration and check host
 load_config
 check_config
 check_host
 
-# Check number of arguments
-if [[ $# == 0 || $# > 3 ]]; then
-    help
-fi
+# check number of args
+if [[ $# == 0 || $# > 3 ]]; then help; fi
 
-# Loop through provided arguments
+# loop through args
 dash_flag=false
 start_index=0
 end_index=${#CMD[*]}
-for arg in "$@"; do
-    if [[ $arg == "-" ]]; then
+for ii in "$@";
+do
+    if [[ $ii == "-" ]]; then
         dash_flag=true
         continue
     fi
-    find_index "$arg"
+    find_index $ii
     if [[ $dash_flag == false ]]; then
         start_index=$index
     else
-        end_index=$((index + 1))
+        end_index=$(($index+1))
     fi
 done
 if [[ $dash_flag == false ]]; then
-    end_index=$((start_index + 1))
+    end_index=$(($start_index + 1))
 fi
 
-# Execute commands based on indices
-for ((i = start_index; i < end_index; i++)); do
-    ${CMD[i]}
+#loop through the commands
+for ((ii=$start_index; ii<$end_index; ii++)); do
+    ${CMD[ii]}
 done
 
 echo "$0 - Initial build is done!"
-
