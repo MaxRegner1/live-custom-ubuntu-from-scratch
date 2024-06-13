@@ -8,6 +8,10 @@
 # The version of Ubuntu to generate.  Successfully tested: bionic, cosmic, disco, eoan, focal, groovy
 # See https://wiki.ubuntu.com/DevelopmentCodeNames for details
 export TARGET_UBUNTU_VERSION="focal"
+TARGET_UBUNTU_VERSION="focal"  # Replace with your desired Ubuntu version code name
+TARGET_UBUNTU_MIRROR="http://us.archive.ubuntu.com/ubuntu/"
+export TARGET_UBUNTU_MIRROR="http://us.archive.ubuntu.com/ubuntu/"
+
 
 # The packaged version of the Linux kernel to install on target image.
 # See https://wiki.ubuntu.com/Kernel/LTSEnablementStack for details
