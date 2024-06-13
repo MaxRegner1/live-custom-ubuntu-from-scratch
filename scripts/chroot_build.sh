@@ -21,7 +21,7 @@ function help() {
     echo -e "Supported commands : ${CMD[*]}"
     echo -e
     echo -e "Syntax: $0 [start_cmd] [-] [end_cmd]"
-    echo -e "\trun from start_cmd to end_end"
+    echo -e "\trun from start_cmd to end_cmd"
     echo -e "\tif start_cmd is omitted, start from first command"
     echo -e "\tif end_cmd is omitted, end with last command"
     echo -e "\tenter single cmd to run the specific command"
@@ -72,7 +72,7 @@ EOF
     apt-get update
     apt-get install -y libterm-readline-gnu-perl systemd-sysv
 
-    #configure machine id
+    # configure machine id
     dbus-uuidgen > /etc/machine-id
     ln -fs /etc/machine-id /var/lib/dbus/machine-id
 
@@ -108,7 +108,8 @@ function install_pkg() {
     grub-pc \
     grub-pc-bin \
     grub2-common \
-    locales
+    locales \
+    software-properties-common
 
     # install kernel
     apt-get install -y --no-install-recommends $TARGET_KERNEL_PACKAGE
