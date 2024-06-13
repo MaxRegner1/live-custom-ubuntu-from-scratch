@@ -93,7 +93,6 @@ function load_config() {
     fi
 }
 
-
 function install_pkg() {
     echo "=====> running install_pkg ... will take a long time ..."
     apt-get -y upgrade
@@ -109,11 +108,15 @@ function install_pkg() {
     grub-pc \
     grub-pc-bin \
     grub2-common \
-    locales \
-    pangolin-desktop
+    locales
 
     # install kernel
     apt-get install -y --no-install-recommends $TARGET_KERNEL_PACKAGE
+
+    # install Pangolin desktop
+    add-apt-repository ppa:ubuntubudgie/backports
+    apt-get update
+    apt-get install -y ubuntu-budgie-desktop
 
     # Call into config function
     customize_image
@@ -128,7 +131,7 @@ function install_pkg() {
     # network manager
     cat <<EOF > /etc/NetworkManager/NetworkManager.conf
 [main]
-plugins=ifcfg-rh,keyfile
+plugins=ifupdown,keyfile
 
 [ifupdown]
 managed=false
