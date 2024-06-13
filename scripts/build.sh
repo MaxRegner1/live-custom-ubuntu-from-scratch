@@ -101,10 +101,10 @@ function run_chroot() {
 
     chroot_enter_setup
 
-    sudo ln -f $SCRIPT_DIR/chroot_build.sh chroot/root/chroot_build.sh
-    sudo ln -f $SCRIPT_DIR/default_config.sh chroot/root/default_config.sh
+    sudo cp -f $SCRIPT_DIR/chroot_build.sh chroot/root/chroot_build.sh
+    sudo cp -f $SCRIPT_DIR/default_config.sh chroot/root/default_config.sh
     if [[ -f "$SCRIPT_DIR/config.sh" ]]; then
-        sudo ln -f $SCRIPT_DIR/config.sh chroot/root/config.sh
+        sudo cp -f $SCRIPT_DIR/config.sh chroot/root/config.sh
     fi    
 
     sudo chroot chroot /root/chroot_build.sh -
@@ -231,24 +231,24 @@ EOF
         -iso-level 3 \
         -full-iso9660-filenames \
         -volid "$TARGET_NAME" \
-        -eltorito-boot boot/grub/bios.img \
-        -no-emul-boot \
-        -boot-load-size 4 \
-        -boot-info-table \
-        --eltorito-catalog boot/grub/boot.cat \
-        --grub2-boot-info \
-        --grub2-mbr /usr/lib/grub/i386-pc/boot_hybrid.img \
-        -eltorito-alt-boot \
-        -e EFI/efiboot.img \
-        -no-emul-boot \
-        -append_partition 2 0xef isolinux/efiboot.img \
-        -output "$SCRIPT_DIR/$TARGET_NAME.iso" \
-        -m "isolinux/efiboot.img" \
-        -m "isolinux/bios.img" \
-        -graft-points \
-           "/EFI/efiboot.img=isolinux/efiboot.img" \
-           "/boot/grub/bios.img=isolinux/bios.img" \
-           "."
+        -eltor    -ito-boot boot/grub/bios.img \
+    -no-emul-boot \
+    -boot-load-size 4 \
+    -boot-info-table \
+    --eltorito-catalog boot/grub/boot.cat \
+    --grub2-boot-info \
+    --grub2-mbr /usr/lib/grub/i386-pc/boot_hybrid.img \
+    -eltorito-alt-boot \
+    -e EFI/efiboot.img \
+    -no-emul-boot \
+    -append_partition 2 0xef isolinux/efiboot.img \
+    -output "$SCRIPT_DIR/$TARGET_NAME.iso" \
+    -m "isolinux/efiboot.img" \
+    -m "isolinux/bios.img" \
+    -graft-points \
+       "/EFI/efiboot.img=isolinux/efiboot.img" \
+       "/boot/grub/bios.img=isolinux/bios.img" \
+       "."
 
     popd
 }
