@@ -12,7 +12,7 @@ CMD=(setup_host install_pkg finish_up)
 function help() {
     # if $1 is set, use $1 as headline message in help()
     if [ -z ${1+x} ]; then
-        echo -e "This script builds Ubuntu from scratch"
+        echo -e "This script builds a system from scratch with Pangolin Desktop and OpenEuler configurations"
         echo -e
     else
         echo -e $1
@@ -56,21 +56,14 @@ function setup_host() {
     echo "=====> running setup_host ..."
 
    cat <<EOF > /etc/apt/sources.list
-deb http://us.archive.ubuntu.com/ubuntu/ $TARGET_UBUNTU_VERSION main restricted universe multiverse
-deb-src http://us.archive.ubuntu.com/ubuntu/ $TARGET_UBUNTU_VERSION main restricted universe multiverse
-
-deb http://us.archive.ubuntu.com/ubuntu/ $TARGET_UBUNTU_VERSION-security main restricted universe multiverse
-deb-src http://us.archive.ubuntu.com/ubuntu/ $TARGET_UBUNTU_VERSION-security main restricted universe multiverse
-
-deb http://us.archive.ubuntu.com/ubuntu/ $TARGET_UBUNTU_VERSION-updates main restricted universe multiverse
-deb-src http://us.archive.ubuntu.com/ubuntu/ $TARGET_UBUNTU_VERSION-updates main restricted universe multiverse
+deb http://repo.openeuler.org/openEuler-22.03-LTS/OS/x86_64/ openEuler-22.03-LTS main
 EOF
 
     echo "$TARGET_NAME" > /etc/hostname
 
     # we need to install systemd first, to configure machine id
-    apt-get update
-    apt-get install -y libterm-readline-gnu-perl systemd-sysv
+    dnf update -y
+    dnf install -y systemd-sysv
 
     #configure machine id
     dbus-uuidgen > /etc/machine-id
@@ -96,64 +89,44 @@ function load_config() {
 
 function install_pkg() {
     echo "=====> running install_pkg ... will take a long time ..."
-    apt-get -y upgrade
+    dnf -y upgrade
 
     # install live packages
-    apt-get install -y \
+    dnf install -y \
     sudo \
-    ubuntu-standard \
-    casper \
-    lupin-casper \
-    discover \
-    laptop-detect \
-    os-prober \
     network-manager \
-    resolvconf \
     net-tools \
     wireless-tools \
-    wpagui \
-    grub-common \
-    grub-gfxpayload-lists \
-    grub-pc \
-    grub-pc-bin \
-    grub2-common \
-    locales
-    
-    # install kernel
-    apt-get install -y --no-install-recommends $TARGET_KERNEL_PACKAGE
+    grub2 \
+    locales \
+    pangolin-desktop \
+    euleros-release
 
-    # graphic installer - ubiquity
-    apt-get install -y \
-    ubiquity \
-    ubiquity-casper \
-    ubiquity-frontend-gtk \
-    ubiquity-slideshow-ubuntu \
-    ubiquity-ubuntu-artwork
+    # install kernel
+    dnf install -y --skip-broken $TARGET_KERNEL_PACKAGE
 
     # Call into config function
     customize_image
 
-    # remove unused and clean up apt cache
-    apt-get autoremove -y
+    # remove unused and clean up dnf cache
+    dnf autoremove -y
 
     # final touch
-    dpkg-reconfigure locales
-    dpkg-reconfigure resolvconf
+    localectl set-locale LANG=en_US.UTF-8
+    localectl set-keymap us
 
     # network manager
     cat <<EOF > /etc/NetworkManager/NetworkManager.conf
 [main]
-rc-manager=resolvconf
-plugins=ifupdown,keyfile
-dns=dnsmasq
+plugins=ifcfg-rh,keyfile
 
 [ifupdown]
 managed=false
 EOF
 
-    dpkg-reconfigure network-manager
+    systemctl restart NetworkManager
 
-    apt-get clean -y
+    dnf clean all
 }
 
 function finish_up() { 
@@ -204,4 +177,3 @@ for ((ii=$start_index; ii<$end_index; ii++)); do
 done
 
 echo "$0 - Initial build is done!"
-
