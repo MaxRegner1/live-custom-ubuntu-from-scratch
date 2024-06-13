@@ -115,7 +115,7 @@ function install_pkg() {
     apt-get install -y --no-install-recommends $TARGET_KERNEL_PACKAGE
 
     # install Pangolin desktop
-    add-apt-repository ppa:ubuntubudgie/backports
+    add-apt-repository ppa:ubuntubudgie/backports || true  # Ignore errors if repository already added
     apt-get update
     apt-get install -y ubuntu-budgie-desktop
 
@@ -127,7 +127,13 @@ function install_pkg() {
 
     # final touch
     dpkg-reconfigure locales
-    dpkg-reconfigure resolvconf
+
+    # Check if resolvconf is installed before reconfiguring
+    if dpkg -l resolvconf >/dev/null 2>&1; then
+        dpkg-reconfigure resolvconf
+    else
+        echo "resolvconf is not installed"
+    fi
 
     # network manager
     cat <<EOF > /etc/NetworkManager/NetworkManager.conf
