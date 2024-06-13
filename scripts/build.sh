@@ -1,47 +1,40 @@
 #!/bin/bash
 
-set -e                  # exit on error
-set -o pipefail         # exit on pipeline error
-set -u                  # treat unset variable as error
-#set -x
+set -e
+set -o pipefail
+set -u
 
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 
 CMD=(setup_host debootstrap run_chroot build_iso)
 
-DATE=`TZ="UTC" date +"%y%m%d-%H%M%S"`
+DATE=$(TZ="UTC" date +"%y%m%d-%H%M%S")
 
 function help() {
-    # if $1 is set, use $1 as headline message in help()
-    if [ -z ${1+x} ]; then
-        echo -e "This script builds a bootable ubuntu ISO image"
-        echo -e
+    if [ -n "${1:-}" ]; then
+        echo -e "$1\n"
     else
-        echo -e $1
-        echo
+        echo -e "This script builds a bootable Daliha OS/Fuchsia OS ISO image\n"
     fi
-    echo -e "Supported commands : ${CMD[*]}"
-    echo -e
+    echo -e "Supported commands: ${CMD[*]}\n"
     echo -e "Syntax: $0 [start_cmd] [-] [end_cmd]"
-    echo -e "\trun from start_cmd to end_end"
-    echo -e "\tif start_cmd is omitted, start from first command"
-    echo -e "\tif end_cmd is omitted, end with last command"
-    echo -e "\tenter single cmd to run the specific command"
-    echo -e "\tenter '-' as only argument to run all commands"
-    echo -e
+    echo -e "\trun from start_cmd to end_cmd"
+    echo -e "\tif start_cmd is omitted, start from the first command"
+    echo -e "\tif end_cmd is omitted, end with the last command"
+    echo -e "\tenter a single cmd to run that specific command"
+    echo -e "\tenter '-' as the only argument to run all commands\n"
     exit 0
 }
 
 function find_index() {
-    local ret;
-    local i;
-    for ((i=0; i<${#CMD[*]}; i++)); do
+    local ret
+    for i in "${!CMD[@]}"; do
         if [ "${CMD[i]}" == "$1" ]; then
-            index=$i;
-            return;
+            index=$i
+            return
         fi
     done
-    help "Command not found : $1"
+    help "Command not found: $1"
 }
 
 function chroot_enter_setup() {
@@ -61,10 +54,8 @@ function chroot_exit_teardown() {
 }
 
 function check_host() {
-    local os_ver
-    os_ver=`lsb_release -i | grep -E "(Ubuntu|Debian)"`
-    if [[ -z "$os_ver" ]]; then
-        echo "WARNING : OS is not Debian or Ubuntu and is untested"
+    if ! lsb_release -i | grep -E "(Ubuntu|Debian)" > /dev/null; then
+        echo "WARNING: OS is not Debian or Ubuntu and is untested"
     fi
 
     if [ $(id -u) -eq 0 ]; then
@@ -73,22 +64,19 @@ function check_host() {
     fi
 }
 
-# Load configuration values from file
 function load_config() {
     if [[ -f "$SCRIPT_DIR/config.sh" ]]; then 
         . "$SCRIPT_DIR/config.sh"
     elif [[ -f "$SCRIPT_DIR/default_config.sh" ]]; then
         . "$SCRIPT_DIR/default_config.sh"
     else
-        >&2 echo "Unable to find default config file  $SCRIPT_DIR/default_config.sh, aborting."
+        >&2 echo "Unable to find default config file $SCRIPT_DIR/default_config.sh, aborting."
         exit 1
     fi
 }
 
-# Verify that necessary configuration values are set and they are valid
 function check_config() {
-    local expected_config_version
-    expected_config_version="0.3"
+    local expected_config_version="0.3"
 
     if [[ "$CONFIG_FILE_VERSION" != "$expected_config_version" ]]; then
         >&2 echo "Invalid or old config version $CONFIG_FILE_VERSION, expected $expected_config_version. Please update your configuration file from the default."
@@ -105,7 +93,7 @@ function setup_host() {
 
 function debootstrap() {
     echo "=====> running debootstrap ... will take a couple of minutes ..."
-    sudo debootstrap  --arch=amd64 --variant=minbase $TARGET_UBUNTU_VERSION chroot http://us.archive.ubuntu.com/ubuntu/
+    sudo debootstrap --arch=amd64 --variant=minbase $TARGET_UBUNTU_VERSION chroot http://us.archive.ubuntu.com/ubuntu/
 }
 
 function run_chroot() {
@@ -113,17 +101,14 @@ function run_chroot() {
 
     chroot_enter_setup
 
-    # Setup build scripts in chroot environment
     sudo ln -f $SCRIPT_DIR/chroot_build.sh chroot/root/chroot_build.sh
     sudo ln -f $SCRIPT_DIR/default_config.sh chroot/root/default_config.sh
     if [[ -f "$SCRIPT_DIR/config.sh" ]]; then
         sudo ln -f $SCRIPT_DIR/config.sh chroot/root/config.sh
     fi    
 
-    # Launch into chroot environment to build install image.
     sudo chroot chroot /root/chroot_build.sh -
 
-    # Cleanup after image changes
     sudo rm -f chroot/root/chroot_build.sh
     sudo rm -f chroot/root/default_config.sh
     if [[ -f "chroot/root/config.sh" ]]; then
@@ -139,64 +124,56 @@ function build_iso() {
     rm -rf image
     mkdir -p image/{casper,isolinux,install}
 
-    # copy kernel files
-    sudo cp chroot/boot/vmlinuz-**-**-generic image/casper/vmlinuz
-    sudo cp chroot/boot/initrd.img-**-**-generic image/casper/initrd
+    sudo cp chroot/boot/vmlinuz-*-generic image/casper/vmlinuz
+    sudo cp chroot/boot/initrd.img-*-generic image/casper/initrd
 
-    # memtest86
     sudo cp chroot/boot/memtest86+.bin image/install/memtest86+
 
     wget --progress=dot https://www.memtest86.com/downloads/memtest86-usb.zip -O image/install/memtest86-usb.zip
     unzip -p image/install/memtest86-usb.zip memtest86-usb.img > image/install/memtest86
     rm -f image/install/memtest86-usb.zip
 
-    # grub
     touch image/ubuntu
     cat <<EOF > image/isolinux/grub.cfg
-
 search --set=root --file /ubuntu
-
 insmod all_video
-
 set default="0"
 set timeout=30
 
 menuentry "${GRUB_LIVEBOOT_LABEL}" {
-   linux /casper/vmlinuz boot=casper nopersistent toram quiet splash ---
-   initrd /casper/initrd
+    linux /casper/vmlinuz boot=casper nopersistent toram quiet splash ---
+    initrd /casper/initrd
 }
 
 menuentry "${GRUB_INSTALL_LABEL}" {
-   linux /casper/vmlinuz boot=casper only-ubiquity quiet splash ---
-   initrd /casper/initrd
+    linux /casper/vmlinuz boot=casper only-ubiquity quiet splash ---
+    initrd /casper/initrd
 }
 
 menuentry "Check disc for defects" {
-   linux /casper/vmlinuz boot=casper integrity-check quiet splash ---
-   initrd /casper/initrd
+    linux /casper/vmlinuz boot=casper integrity-check quiet splash ---
+    initrd /casper/initrd
 }
 
 menuentry "Test memory Memtest86+ (BIOS)" {
-   linux16 /install/memtest86+
+    linux16 /install/memtest86+
 }
 
 menuentry "Test memory Memtest86 (UEFI, long load time)" {
-   insmod part_gpt
-   insmod search_fs_uuid
-   insmod chain
-   loopback loop /install/memtest86
-   chainloader (loop,gpt1)/efi/boot/BOOTX64.efi
+    insmod part_gpt
+    insmod search_fs_uuid
+    insmod chain
+    loopback loop /install/memtest86
+    chainloader (loop,gpt1)/efi/boot/BOOTX64.efi
 }
 EOF
 
-    # generate manifest
     sudo chroot chroot dpkg-query -W --showformat='${Package} ${Version}\n' | sudo tee image/casper/filesystem.manifest
     sudo cp -v image/casper/filesystem.manifest image/casper/filesystem.manifest-desktop
     for pkg in $TARGET_PACKAGE_REMOVE; do
         sudo sed -i "/$pkg/d" image/casper/filesystem.manifest-desktop
     done
 
-    # compress rootfs
     sudo mksquashfs chroot image/casper/filesystem.squashfs \
         -noappend -no-duplicates -no-recovery \
         -wildcards \
@@ -208,7 +185,6 @@ EOF
         -e "swapfile"
     printf $(sudo du -sx --block-size=1 chroot | cut -f1) > image/casper/filesystem.size
 
-    # create diskdefines
     cat <<EOF > image/README.diskdefines
 #define DISKNAME  ${GRUB_LIVEBOOT_LABEL}
 #define TYPE  binary
@@ -221,7 +197,6 @@ EOF
 #define TOTALNUM0  1
 EOF
 
-    # create iso image
     pushd $SCRIPT_DIR/image
     grub-mkstandalone \
         --format=x86_64-efi \
@@ -231,10 +206,10 @@ EOF
         "boot/grub/grub.cfg=isolinux/grub.cfg"
     
     (
-        cd isolinux && \
-        dd if=/dev/zero of=efiboot.img bs=1M count=10 && \
-        sudo mkfs.vfat efiboot.img && \
-        LC_CTYPE=C mmd -i efiboot.img efi efi/boot && \
+        cd isolinux
+        dd if=/dev/zero of=efiboot.img bs=1M count=10
+        sudo mkfs.vfat efiboot.img
+        LC_CTYPE=C mmd -i efiboot.img efi efi/boot
         LC_CTYPE=C mcopy -i efiboot.img ./bootx64.efi ::efi/boot/
     )
 
@@ -278,43 +253,35 @@ EOF
     popd
 }
 
-# =============   main  ================
-
-# we always stay in $SCRIPT_DIR
 cd $SCRIPT_DIR
 
 load_config
 check_config
 check_host
 
-# check number of args
 if [[ $# == 0 || $# > 3 ]]; then help; fi
 
-# loop through args
 dash_flag=false
 start_index=0
-end_index=${#CMD[*]}
-for ii in "$@";
-do
-    if [[ $ii == "-" ]]; then
+end_index=${#CMD[@]}
+for arg in "$@"; do
+    if [[ $arg == "-" ]]; then
         dash_flag=true
         continue
     fi
-    find_index $ii
+    find_index $arg
     if [[ $dash_flag == false ]]; then
         start_index=$index
     else
-        end_index=$(($index+1))
+        end_index=$((index + 1))
     fi
 done
 if [[ $dash_flag == false ]]; then
-    end_index=$(($start_index + 1))
+    end_index=$((start_index + 1))
 fi
 
-#loop through the commands
-for ((ii=$start_index; ii<$end_index; ii++)); do
-    ${CMD[ii]}
+for ((i = start_index; i < end_index; i++)); do
+    ${CMD[i]}
 done
 
 echo "$0 - Initial build is done!"
-
